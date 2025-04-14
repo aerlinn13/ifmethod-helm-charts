@@ -1,0 +1,57 @@
+# prettier-ignore
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: {{ .Values.environment }}
+spec:
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: {{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}
+          ports:
+            - containerPort: {{ .Values.mongodb.service.port }}
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: "{{ .Values.mongodb.auth.username }}"
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              value: "{{ .Values.mongodb.auth.password }}"
+            - name: MONGO_INITDB_DATABASE
+              value: "{{ .Values.mongodb.auth.database }}"
+            - name: MONGODB_BIND_IP
+              value: "0.0.0.0"
+          args:
+            - "--bind_ip_all"
+            - "--auth"
+          volumeMounts:
+            - name: mongodb-data
+              mountPath: /data/db
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: mongodb-data
+          persistentVolumeClaim:
+            claimName: mongodb-pvc
+        - name: init-script
+          configMap:
+            name: mongodb-init
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.mongodb.service.name }}
+  namespace: {{ .Values.environment }}
+spec:
+  type: {{ .Values.mongodb.service.type }}
+  ports:
+    - port: {{ .Values.mongodb.service.port }}
+      targetPort: {{ .Values.mongodb.service.targetPort }}
+  selector:
+    app: mongodb

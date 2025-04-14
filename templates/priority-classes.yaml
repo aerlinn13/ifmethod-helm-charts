@@ -1,0 +1,16 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: mongodb-priority
+value: 1000
+globalDefault: false
+description: "Priority class for MongoDB instances."
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: server-priority
+value: 500
+globalDefault: false
+description: "Priority class for server instances." 

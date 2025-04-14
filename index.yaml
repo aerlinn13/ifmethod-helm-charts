@@ -1,0 +1,47 @@
+apiVersion: v1
+entries:
+  ifmethod:
+  - apiVersion: v2
+    appVersion: 1.16.0
+    created: "2025-04-14T20:33:08.525051+03:00"
+    dependencies:
+    - condition: ingress-nginx.enabled
+      name: ingress-nginx
+      repository: https://kubernetes.github.io/ingress-nginx
+      version: 4.12.1
+    description: A Helm chart for Kubernetes
+    digest: 98c3bcfe830caa9bb7426a2d5a805d090a35d314e0a6d407470ed2764edda6cc
+    name: ifmethod
+    type: application
+    urls:
+    - https://aerlinn13.github.io/ifmethod-helm-charts/ifmethod-0.1.1.tgz
+    version: 0.1.1
+  ingress-nginx:
+  - annotations:
+      artifacthub.io/changes: |
+        - Update Ingress-Nginx version controller-v1.12.1
+      artifacthub.io/prerelease: "false"
+    apiVersion: v2
+    appVersion: 1.12.1
+    created: "2025-04-14T20:33:08.530148+03:00"
+    description: Ingress controller for Kubernetes using NGINX as a reverse proxy
+      and load balancer
+    digest: 59f6647b8c0aa12267722fa0ade16713fb0b16a1af932227af2065fdd1a7f3bc
+    home: https://github.com/kubernetes/ingress-nginx
+    icon: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Nginx_logo.svg/500px-Nginx_logo.svg.png
+    keywords:
+    - ingress
+    - nginx
+    kubeVersion: '>=1.21.0-0'
+    maintainers:
+    - name: cpanato
+    - name: Gacko
+    - name: strongjz
+    - name: tao12345666333
+    name: ingress-nginx
+    sources:
+    - https://github.com/kubernetes/ingress-nginx
+    urls:
+    - https://aerlinn13.github.io/ifmethod-helm-charts/charts/ingress-nginx-4.12.1.tgz
+    version: 4.12.1
+generated: "2025-04-14T20:33:08.521442+03:00"

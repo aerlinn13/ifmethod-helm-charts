@@ -1,0 +1,31 @@
+{{- range $app := list "client" "server" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $app }}
+  namespace: {{ $.Values.environment }}
+  annotations:
+    "helm.sh/hook": "post-install,post-upgrade"
+    "helm.sh/hook-delete-policy": "before-hook-creation"
+spec:
+  replicas: {{ index $.Values $app "replicaCount" }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ $app }}
+  template:
+    metadata:
+      labels:
+        app: {{ $app }}
+    spec:
+      containers:
+      - name: {{ $app }}
+        image: "{{ index $.Values $app "image" "repository" }}:{{ index $.Values $app "image" "tag" }}"
+        ports:
+        - containerPort: {{ index $.Values $app "containerPort" }}
+        envFrom:
+        - configMapRef:
+            name: {{ $app }}-config
+{{- end }}

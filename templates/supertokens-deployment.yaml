@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.supertokens.name }}
+  labels:
+    app: {{ .Values.supertokens.name }}
+spec:
+  replicas: {{ .Values.supertokens.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.supertokens.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.supertokens.name }}
+    spec:
+      containers:
+      - name: {{ .Values.supertokens.name }}
+        image: {{ .Values.supertokens.image.repository }}:{{ .Values.supertokens.image.tag }}
+        ports:
+        - containerPort: {{ .Values.supertokens.containerPort }}
+        env:
+        - name: API_KEYS
+          value: {{ .Values.supertokens.env.API_KEYS }}
+        - name: POSTGRESQL_CONNECTION_URI
+          value: {{ .Values.supertokens.env.POSTGRESQL_CONNECTION_URI }}
+        - name: SUPERTOKENS_PORT
+          value: {{ .Values.supertokens.env.SUPERTOKENS_PORT | quote }}

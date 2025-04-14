@@ -1,0 +1,5 @@
+# artifacthub-repo.yml
+repositoryID: ifmethod-helm-charts
+owners:
+  - name: Danil Chernyshev
+    email: danil@ifmethod.com

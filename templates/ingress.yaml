@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: {{ .Values.environment }}
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-{{ .Values.environment }}"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - {{ .Values.client.ingress.host }}
+    - {{ .Values.server.ingress.host }}
+    secretName: app-tls
+  rules:
+  - host: {{ .Values.client.ingress.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.client.service.name }}
+            port:
+              number: {{ .Values.client.service.port }}
+  - host: {{ .Values.server.ingress.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.server.service.name }}
+            port:
+              number: {{ .Values.server.service.port }}

@@ -1,0 +1,31 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }} and deployed to namespace {{ .Values.environment }}.
+
+To check the status of your deployments:
+  kubectl get deployments -n {{ .Values.environment }}
+
+To check your pods:
+  kubectl get pods -n {{ .Values.environment }}
+
+Your applications should be available at:
+Client: https://{{ .Values.client.ingress.host }}
+API: https://{{ .Values.server.ingress.host }}
+
+To check your ingress status:
+  kubectl get ingress -n {{ .Values.environment }}
+
+To check SSL certificate status:
+  kubectl get certificates -n {{ .Values.environment }}
+
+To view logs:
+Client: kubectl logs -f -l app=client -n {{ .Values.environment }}
+Server: kubectl logs -f -l app=server -n {{ .Values.environment }}
+
+For troubleshooting:
+1. Check pods status:
+   kubectl describe pods -n {{ .Values.environment }}
+2. Check ingress status:
+   kubectl describe ingress -n {{ .Values.environment }}
+3. Check configmaps:
+   kubectl get configmaps -n {{ .Values.environment }}

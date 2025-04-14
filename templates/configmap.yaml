@@ -1,0 +1,12 @@
+{{- range $app := list "client" "server" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $app }}-config
+  namespace: {{ $.Values.environment }}
+data:
+{{- range $key, $value := index $.Values $app "env" }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }} 

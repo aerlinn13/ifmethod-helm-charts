@@ -1,0 +1,15 @@
+{{- range $app := list "client" "server" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ index $.Values $app "service" "name" }}
+  namespace: {{ $.Values.environment }}
+spec:
+  type: {{ index $.Values $app "service" "type" }}
+  ports:
+  - port: {{ index $.Values $app "service" "port" }}
+    targetPort: {{ index $.Values $app "service" "targetPort" }}
+  selector:
+    app: {{ $app }}
+{{- end }}

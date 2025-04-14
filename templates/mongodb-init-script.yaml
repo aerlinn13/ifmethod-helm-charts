@@ -1,0 +1,18 @@
+# prettier-ignore
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-init
+  namespace: {{ .Values.environment }}
+data:
+  init.js: |-
+    db = db.getSiblingDB('admin');
+      db.createUser({
+        user: "admin",
+        pwd: "{{ .Values.mongodb.auth.password }}",
+        roles: [
+          { role: "userAdminAnyDatabase", db: "admin" },
+          { role: "readWriteAnyDatabase", db: "admin" },
+          { role: "dbAdminAnyDatabase", db: "admin" }
+        ]
+      });
