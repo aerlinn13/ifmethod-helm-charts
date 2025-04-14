@@ -1,0 +1,108 @@
+# Default values for staging
+environment: staging
+domain: staging.ifmethod.com
+
+certManager:
+  email: "danil@hey.com"
+
+client:
+  name: client
+  replicaCount: 1
+  image:
+    repository: aerlinn13/ifmethod-client
+    tag: "4.25.1"
+  containerPort: 8080
+  ingress:
+    host: staging.ifmethod.com
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    name: client
+  env:
+    APP_HOST: "https://staging.ifmethod.com"
+    API_HOST: "https://staging-api.ifmethod.com"
+    IS_PROD: "true"
+    DEMO_ENABLED: "true"
+
+server:
+  name: server
+  replicaCount: 1
+  image:
+    repository: aerlinn13/ifmethod-server
+    tag: "4.25.1"
+  containerPort: 5050
+  ingress:
+    host: staging-api.ifmethod.com
+  service:
+    type: ClusterIP
+    port: 5050
+    targetPort: 5050
+    name: server
+  env:
+    PORT: "5050"
+    APP_HOST: https://staging.ifmethod.com
+    API_HOST: https://staging-api.ifmethod.com
+    MONGODB_URI: "mongodb://admin:j6M7N3eo1Heu1BTx@mongodb:27017/ifmethod?authSource=admin"
+  priorityClassName: server-priority
+
+mongodb:
+  name: mongodb
+  replicas: 1
+  image:
+    repository: mongo
+    tag: "8.0.6"
+  port: 27017
+  priorityClassName: mongodb-priority
+  persistence:
+    size: 1Gi
+  auth:
+    username: "admin"
+    password: "j6M7N3eo1Heu1BTx"
+    database: "ifmethod"
+  service:
+    type: ClusterIP
+    port: 27017
+    targetPort: 27017
+    name: mongodb
+  net:
+    bindIp: 0.0.0.0
+
+
+# Add new PostgreSQL configuration
+postgres:
+  name: postgres
+  replicas: 1
+  image:
+    repository: postgres
+    tag: "15"
+  containerPort: 5432
+  service:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+    name: postgres
+  persistence:
+    size: 256Mi
+  env:
+    POSTGRES_USER: "supertokens"
+    POSTGRES_PASSWORD: "supertokens"
+    POSTGRES_DB: "supertokens"
+
+# Add new SuperTokens configuration
+supertokens:
+  name: supertokens
+  replicas: 1
+  image:
+    repository: registry.supertokens.io/supertokens/supertokens-postgresql
+    tag: "10.1.0"
+  containerPort: 3567
+  service:
+    type: ClusterIP
+    port: 3567
+    targetPort: 3567
+    name: supertokens
+  env:
+    API_KEYS: "Hs7Kp9Lm2Qr5Vx8Zc3Jf"
+    POSTGRESQL_CONNECTION_URI: "postgresql://supertokens:supertokens@postgres:5432/supertokens"
+    SUPERTOKENS_PORT: "3567"
