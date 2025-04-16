@@ -8,4 +8,4 @@ spec:
   resources:
     requests:
       storage: {{ .Values.postgres.persistence.size }}
-  storageClassName: do-block-storage
+  storageClassName: {{ .Values.postgres.persistence.storageClass }}
