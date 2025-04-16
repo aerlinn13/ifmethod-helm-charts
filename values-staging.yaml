@@ -45,7 +45,6 @@ server:
     APP_HOST: https://staging.ifmethod.com
     API_HOST: https://staging-api.ifmethod.com
     MONGODB_URI: "mongodb://admin:j6M7N3eo1Heu1BTx@mongodb:27017/ifmethod?authSource=admin"
-  priorityClassName: server-priority
 
 mongodb:
   name: mongodb
@@ -54,7 +53,6 @@ mongodb:
     repository: mongo
     tag: "8.0.6"
   port: 27017
-  priorityClassName: mongodb-priority
   persistence:
     size: 1Gi
   auth:
