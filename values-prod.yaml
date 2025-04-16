@@ -1,5 +1,6 @@
 environment: production
 domain: ifmethod.com
+namespace: production
 
 certManager:
   email: "danil@hey.com"  # Replace with your email address

@@ -1,5 +1,6 @@
 # Default values for staging
 environment: staging
+namespace: production
 domain: staging.ifmethod.com
 
 certManager:

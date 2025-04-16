@@ -3,14 +3,14 @@ entries:
   ifmethod:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2025-04-16T07:42:53.38822184Z"
+    created: "2025-04-16T15:57:31.557930853Z"
     dependencies:
     - condition: ingress-nginx.enabled
       name: ingress-nginx
       repository: https://kubernetes.github.io/ingress-nginx
       version: 4.12.1
     description: A Helm chart for Kubernetes
-    digest: a79dbe88d8fc0c29983bca2f70225b314b0d8e40e07ffe772def3302fceccc0d
+    digest: 97a55c8a55ce7600e36591c8b4e15feab14150f2ce7c13c6f8ca8d36f96a7548
     name: ifmethod
     type: application
     urls:
@@ -23,7 +23,7 @@ entries:
       artifacthub.io/prerelease: "false"
     apiVersion: v2
     appVersion: 1.12.1
-    created: "2025-04-16T07:42:53.394470125Z"
+    created: "2025-04-16T15:57:31.567875326Z"
     description: Ingress controller for Kubernetes using NGINX as a reverse proxy
       and load balancer
     digest: 59f6647b8c0aa12267722fa0ade16713fb0b16a1af932227af2065fdd1a7f3bc
@@ -44,4 +44,4 @@ entries:
     urls:
     - https://aerlinn13.github.io/ifmethod-helm-charts/charts/ingress-nginx-4.12.1.tgz
     version: 4.12.1
-generated: "2025-04-16T07:42:53.368050448Z"
+generated: "2025-04-16T15:57:31.525641369Z"

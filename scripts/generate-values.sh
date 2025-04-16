@@ -2,9 +2,6 @@
 
 echo "🛠️ Generating Helm values.yaml for Ifmethod..."
 
-read -p "Environment [production]:" ENVIRONMENT
-ENVIRONMENT=${ENVIRONMENT:-production}
-
 read -p "Domain (required, e.g. example.com):" DOMAIN
 DOMAIN=${DOMAIN}
 
@@ -19,14 +16,15 @@ SERVER_TAG=${SERVER_TAG:-4.25.1}
 
 # Start writing the YAML
 cat > values.yaml <<EOF
-environment: $ENVIRONMENT
+namespace: "production"
+environment: "production"
 domain: $DOMAIN
 
 certManager:
   email: "$EMAIL"
 
 client:
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: aerlinn13/ifmethod-client
     tag: "$CLIENT_TAG"
@@ -53,7 +51,7 @@ client:
       secretName: app-ifmethod-tls
 
 server:
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: aerlinn13/ifmethod-server
     tag: "$SERVER_TAG"
