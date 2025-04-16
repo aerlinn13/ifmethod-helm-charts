@@ -95,7 +95,6 @@ mongodb:
     password: "j6M7N3eo1Heu1BTx"
     database: "ifmethod"
   persistence:
-    storageClass: "local-path"
     size: 1Gi
   service:
     type: ClusterIP
@@ -137,7 +136,6 @@ postgres:
     targetPort: 5432
     name: postgres
   persistence:
-    storageClass: "local-path"
     size: 512Mi
   env:
     POSTGRES_USER: "supertokens"

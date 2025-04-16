@@ -5,7 +5,6 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: {{ .Values.mongodb.persistence.storageClass }}
   resources:
     requests:
       storage: {{ .Values.mongodb.persistence.size }} 
