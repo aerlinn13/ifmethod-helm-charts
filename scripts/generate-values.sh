@@ -139,6 +139,7 @@ postgres:
     targetPort: 5432
     name: postgres
   persistence:
+    storageClassName: "local-path"
     size: 512Mi
   env:
     POSTGRES_USER: "supertokens"
