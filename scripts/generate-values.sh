@@ -23,6 +23,16 @@ domain: $DOMAIN
 certManager:
   email: "$EMAIL"
 
+ingress-nginx:
+  controller:
+    enabled: true
+    ingressClassResource:
+      name: nginx
+      enabled: true
+      default: true
+    service:
+      type: LoadBalancer
+
 client:
   replicaCount: 1
   image:
