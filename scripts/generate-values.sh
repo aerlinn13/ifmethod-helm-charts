@@ -16,8 +16,6 @@ SERVER_TAG=${SERVER_TAG:-4.25.1}
 
 # Start writing the YAML
 cat > values.yaml <<EOF
-namespace: "default"
-environment: "default"
 domain: $DOMAIN
 
 certManager:
