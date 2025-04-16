@@ -87,7 +87,8 @@ mongodb:
     password: "j6M7N3eo1Heu1BTx"
     database: "ifmethod"
   persistence:
-    size: 10Gi
+    storageClassName: "local-path"
+    size: 1Gi
   service:
     type: ClusterIP
     port: 27017
