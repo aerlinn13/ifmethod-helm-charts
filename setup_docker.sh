@@ -110,17 +110,19 @@ mkdir -p nginx/conf.d certbot/conf certbot/www
 APP_SUBDOMAIN=$(echo ${APP_DOMAIN} | cut -d '.' -f 1)
 API_SUBDOMAIN=$(echo ${API_DOMAIN} | cut -d '.' -f 1)
 
-# Step: Write HTTP NGINX config
-print_step "Writing temporary HTTP-only NGINX config..."
-cat > nginx/conf.d/default.conf <<EOF
+# Step: Write HTTP NGINX config for cert issuance
+print_step "Writing HTTP NGINX configs for certificate issuance..."
+
+# Create HTTP-only config for app domain
+cat > nginx/conf.d/${APP_SUBDOMAIN}.conf <<EOF
 server {
     listen 80;
-    server_name ${APP_DOMAIN} ${API_DOMAIN};
+    server_name ${APP_DOMAIN};
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
         default_type text/plain;
-        try_files $uri =404;
+        try_files \$uri =404;
     }
 
     location / {
@@ -130,10 +132,112 @@ server {
 }
 EOF
 
+# Create HTTP-only config for api domain
+cat > nginx/conf.d/${API_SUBDOMAIN}.conf <<EOF
+server {
+    listen 80;
+    server_name ${API_DOMAIN};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+        try_files \$uri =404;
+    }
+
+    location / {
+        return 200 'Temporary HTTP server for SSL issuance';
+        add_header Content-Type text/plain;
+    }
+}
+EOF
+
+# Step: Start NGINX for HTTP
+print_step "Starting temporary NGINX for HTTP..."
+docker-compose up -d nginx &
+show_progress "Starting NGINX"
+print_step "Waiting for NGINX to start..."
+sleep 5
+
+# Step: Run Certbot
+print_step "Requesting SSL certificates..."
+docker-compose run certbot &
+show_progress "Obtaining SSL certificates"
+if [ $? -ne 0 ]; then
+  print_error "Certbot failed. Check domain DNS or ports 80/443."
+  exit 1
+fi
+print_success "Certificates obtained."
+
+# Step: Update configs with HTTPS
+print_step "Adding HTTPS config to NGINX..."
+
+# Update app domain config
+cat > nginx/conf.d/${APP_SUBDOMAIN}.conf <<EOF
+server {
+    listen 80;
+    server_name ${APP_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${APP_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${APP_DOMAIN}/privkey.pem;
+
+    location / {
+        proxy_pass http://client:8080;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+# Update api domain config
+cat > nginx/conf.d/${API_SUBDOMAIN}.conf <<EOF
+server {
+    listen 80;
+    server_name ${API_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${API_DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${APP_DOMAIN}/privkey.pem;
+
+    location / {
+        proxy_pass http://server:5050;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
 # Step: Generate Docker Compose
 print_step "Generating docker-compose.yml..."
 cat > docker-compose.yml <<EOF
-version: '3'
 
 services:
   client:
@@ -228,89 +332,6 @@ volumes:
   mongodb_data:
   postgres_data:
 EOF
-
-# Step: Start NGINX for HTTP
-print_step "Starting temporary NGINX for HTTP..."
-docker-compose up -d nginx &
-show_progress "Starting NGINX"
-print_step "Waiting for NGINX to start..."
-sleep 5
-
-# Step: Run Certbot
-print_step "Requesting SSL certificates..."
-docker-compose up certbot &
-show_progress "Obtaining SSL certificates"
-if [ $? -ne 0 ]; then
-  print_error "Certbot failed. Check domain DNS or ports 80/443."
-  exit 1
-fi
-print_success "Certificates obtained."
-
-# Step: Append HTTPS config
-print_step "Adding HTTPS config to NGINX..."
-cat >> nginx/conf.d/${APP_SUBDOMAIN}.conf <<EOF
-server {
-    listen 80;
-    server_name ${APP_DOMAIN};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl;
-    server_name ${APP_DOMAIN};
-
-    ssl_certificate /etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${APP_DOMAIN}/privkey.pem;
-
-    location / {
-        proxy_pass http://client:8080;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-}
-EOF
-
-cat >> nginx/conf.d/${API_SUBDOMAIN}.conf <<EOF
-server {
-    listen 80;
-    server_name ${API_DOMAIN};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl;
-    server_name ${API_DOMAIN};
-
-    ssl_certificate /etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${APP_DOMAIN}/privkey.pem;
-
-    location / {
-        proxy_pass http://server:5050;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-    }
-}
-EOF
-
-mv nginx/conf.d/default.conf nginx/conf.d/default.conf.disabled
 
 # Step: Restart all services with HTTPS
 print_step "Restarting all services with HTTPS enabled..."
