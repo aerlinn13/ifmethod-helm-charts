@@ -117,12 +117,15 @@ server {
     listen 80;
     server_name ${APP_DOMAIN} ${API_DOMAIN};
 
-    location /.well-known/acme-challenge/ {
+    location ^~ /.well-known/acme-challenge/ {
         root /var/www/certbot;
+        default_type text/plain;
+        try_files $uri =404;
     }
 
     location / {
-        return 301 https://\$host\$request_uri;
+        return 200 'Temporary HTTP server for SSL issuance';
+        add_header Content-Type text/plain;
     }
 }
 EOF
