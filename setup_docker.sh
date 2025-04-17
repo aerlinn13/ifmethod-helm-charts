@@ -235,7 +235,7 @@ sleep 5
 
 # Step: Run Certbot
 print_step "Requesting SSL certificates..."
-docker-compose run certbot &
+docker-compose up certbot &
 show_progress "Obtaining SSL certificates"
 if [ $? -ne 0 ]; then
   print_error "Certbot failed. Check domain DNS or ports 80/443."
@@ -246,6 +246,19 @@ print_success "Certificates obtained."
 # Step: Append HTTPS config
 print_step "Adding HTTPS config to NGINX..."
 cat >> nginx/conf.d/${APP_SUBDOMAIN}.conf <<EOF
+server {
+    listen 80;
+    server_name ${APP_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
 server {
     listen 443 ssl;
     server_name ${APP_DOMAIN};
@@ -264,6 +277,19 @@ server {
 EOF
 
 cat >> nginx/conf.d/${API_SUBDOMAIN}.conf <<EOF
+server {
+    listen 80;
+    server_name ${API_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
 server {
     listen 443 ssl;
     server_name ${API_DOMAIN};
