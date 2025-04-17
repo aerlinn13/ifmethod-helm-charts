@@ -7,33 +7,71 @@ BLUE='\033[0;34m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 
-echo -e "${BOLD}IFMethod Docker Compose Generator with SSL for app + api${NC}"
-echo -e "This script generates docker-compose.yml + nginx + certbot config\n"
+function print_step() {
+  echo -e "\n${BLUE}🔧 $1${NC}"
+}
+
+function print_success() {
+  echo -e "${GREEN}✅ $1${NC}"
+}
+
+function print_error() {
+  echo -e "${RED}❌ $1${NC}"
+}
+
+echo -e "${BOLD}IFMethod Full Setup Script${NC}"
+echo -e "Provision Docker, generate configs, get SSL certs, launch services.\n"
+
+# Ensure Docker is installed
+print_step "Checking Docker..."
+if ! command -v docker &> /dev/null; then
+  print_step "Docker not found. Installing..."
+  curl -fsSL https://get.docker.com -o get-docker.sh
+  sh get-docker.sh || { print_error "Docker installation failed"; exit 1; }
+  print_success "Docker installed."
+else
+  print_success "Docker is installed."
+fi
+
+# Ensure Docker Compose is installed
+print_step "Checking Docker Compose..."
+if ! command -v docker-compose &> /dev/null; then
+  print_step "Installing Docker Compose..."
+  curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  chmod +x /usr/local/bin/docker-compose
+  ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+  print_success "Docker Compose installed."
+else
+  print_success "Docker Compose is installed."
+fi
 
 # Input prompts
-echo -e "${BLUE}Domain Setup${NC}"
-
+print_step "Domain Setup"
 while true; do
   read -p "App domain (e.g., app.ifmethod.ru): " APP_DOMAIN
-  [ -n "$APP_DOMAIN" ] && break || echo -e "${RED}Required.${NC}"
+  [ -n "$APP_DOMAIN" ] && break || print_error "Required."
 done
 
 while true; do
   read -p "API domain (e.g., api.ifmethod.ru): " API_DOMAIN
-  [ -n "$API_DOMAIN" ] && break || echo -e "${RED}Required.${NC}"
+  [ -n "$API_DOMAIN" ] && break || print_error "Required."
 done
 
 while true; do
-  read -p "Image tag: " TAG
-  [ -n "$TAG" ] && break || echo -e "${RED}Required.${NC}"
+  read -p "Image tag (e.g., 4.25.1): " TAG
+  [ -n "$TAG" ] && break || print_error "Required."
 done
 
-read -p "Your email for Let's Encrypt: " EMAIL
+while true; do
+read -p "Your email for Let's Encrypt (required): " EMAIL
+[ -n "$EMAIL" ] && break || print_error "Required."
+done
 
-# Create required folders
+# Create folder structure
 mkdir -p nginx/conf.d certbot/conf certbot/www
 
-# Write temporary HTTP-only NGINX config
+# Step: Write HTTP NGINX config
+print_step "Writing temporary HTTP-only NGINX config..."
 cat > nginx/conf.d/default.conf <<EOF
 server {
     listen 80;
@@ -49,7 +87,8 @@ server {
 }
 EOF
 
-# Write docker-compose.yml with temporary setup
+# Step: Generate Docker Compose
+print_step "Generating docker-compose.yml..."
 cat > docker-compose.yml <<EOF
 version: '3'
 
@@ -71,6 +110,7 @@ services:
     environment:
       - APP_HOST=https://${APP_DOMAIN}
       - API_HOST=https://${API_DOMAIN}
+      - MONGODB_URI=mongodb://admin:j6M7N3eo1Heu1BTx@mongodb:27017/swinlanes?authSource=admin
       - PORT=5050
     expose:
       - "5050"
@@ -135,7 +175,7 @@ services:
       - ./certbot/www:/var/www/certbot
     command: certonly --webroot \
       --webroot-path=/var/www/certbot \
-      --email ${EMAIL} \
+      ${EMAIL:+--email $EMAIL} \
       --agree-tos \
       --no-eff-email \
       -d ${APP_DOMAIN} \
@@ -146,21 +186,23 @@ volumes:
   postgres_data:
 EOF
 
-# Start nginx to serve challenge
-echo -e "\n${BLUE}Starting NGINX in HTTP-only mode...${NC}"
+# Step: Start NGINX for HTTP
+print_step "Starting temporary NGINX for HTTP..."
 docker-compose up -d nginx
-sleep 5
+sleep 15
+print_step "Waiting for NGINX to start..."
 
-# Run certbot
-echo -e "\n${BLUE}Requesting SSL certs via Certbot...${NC}"
+# Step: Run Certbot
+print_step "Requesting SSL certificates..."
 docker-compose run --rm certbot
-
 if [ $? -ne 0 ]; then
-  echo -e "\n${RED}Certbot failed. Exiting script.${NC}"
+  print_error "Certbot failed. Check domain DNS or ports 80/443."
   exit 1
 fi
+print_success "Certificates obtained."
 
-# Append HTTPS config
+# Step: Append HTTPS config
+print_step "Adding HTTPS config to NGINX..."
 cat >> nginx/conf.d/default.conf <<EOF
 
 server {
@@ -183,8 +225,8 @@ server {
     listen 443 ssl;
     server_name ${API_DOMAIN};
 
-    ssl_certificate /etc/letsencrypt/live/${API_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${API_DOMAIN}/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/${APP_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${APP_DOMAIN}/privkey.pem;
 
     location / {
         proxy_pass http://server:5050;
@@ -196,6 +238,10 @@ server {
 }
 EOF
 
-# Restart nginx with SSL
-echo -e "\n${GREEN}✅ Certificates obtained successfully! Restarting all services with HTTPS...${NC}"
+# Step: Restart all services with HTTPS
+print_step "Restarting all services with HTTPS enabled..."
+docker-compose down
 docker-compose up -d
+
+print_success "IFMethod is up and running at:"
+echo -e "🌐 https://${APP_DOMAIN}"
