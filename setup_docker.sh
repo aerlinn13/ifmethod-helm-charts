@@ -1,11 +1,39 @@
 #!/bin/bash
 
+# Record start time
+start_time=$(date +%s)
+
 # Formatting
 BOLD='\033[1m'
 NC='\033[0m'
 BLUE='\033[0;34m'
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+YELLOW='\033[0;33m'
+
+# Variables for spinner animation
+spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+spinner_i=0
+
+# Function to show spinner and elapsed time
+function show_progress() {
+  local message=$1
+  local pid=$!
+  local delay=0.1
+  local elapsed=0
+  
+  while ps -p $pid > /dev/null; do
+    elapsed=$(( $(date +%s) - start_time ))
+    minutes=$((elapsed / 60))
+    seconds=$((elapsed % 60))
+    
+    printf "\r${YELLOW}${spinner[$spinner_i]} ${message} (${minutes}m ${seconds}s)${NC}  "
+    spinner_i=$(( (spinner_i + 1) % ${#spinner[@]} ))
+    sleep $delay
+  done
+  
+  printf "\r%s\n" "$(printf ' %.0s' {1..80})"  # Clear the line
+}
 
 function print_step() {
   echo -e "\n${BLUE}🔧 $1${NC}"
@@ -27,7 +55,11 @@ print_step "Checking Docker..."
 if ! command -v docker &> /dev/null; then
   print_step "Docker not found. Installing..."
   curl -fsSL https://get.docker.com -o get-docker.sh
-  sh get-docker.sh || { print_error "Docker installation failed"; exit 1; }
+  sh get-docker.sh &
+  show_progress "Installing Docker"
+  if [ $? -ne 0 ]; then
+    print_error "Docker installation failed"; exit 1;
+  fi
   print_success "Docker installed."
 else
   print_success "Docker is installed."
@@ -37,7 +69,8 @@ fi
 print_step "Checking Docker Compose..."
 if ! command -v docker-compose &> /dev/null; then
   print_step "Installing Docker Compose..."
-  curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose &
+  show_progress "Downloading Docker Compose"
   chmod +x /usr/local/bin/docker-compose
   ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
   print_success "Docker Compose installed."
@@ -188,13 +221,15 @@ EOF
 
 # Step: Start NGINX for HTTP
 print_step "Starting temporary NGINX for HTTP..."
-docker-compose up -d nginx
-sleep 15
+docker-compose up -d nginx &
+show_progress "Starting NGINX"
 print_step "Waiting for NGINX to start..."
+sleep 5
 
 # Step: Run Certbot
 print_step "Requesting SSL certificates..."
-docker-compose run --rm certbot
+docker-compose run --rm certbot &
+show_progress "Obtaining SSL certificates"
 if [ $? -ne 0 ]; then
   print_error "Certbot failed. Check domain DNS or ports 80/443."
   exit 1
@@ -240,8 +275,17 @@ EOF
 
 # Step: Restart all services with HTTPS
 print_step "Restarting all services with HTTPS enabled..."
-docker-compose down
-docker-compose up -d
+docker-compose down &
+show_progress "Stopping services"
+docker-compose up -d &
+show_progress "Starting all services with HTTPS"
+
+# Calculate total time
+end_time=$(date +%s)
+total_time=$((end_time - start_time))
+minutes=$((total_time / 60))
+seconds=$((total_time % 60))
 
 print_success "IFMethod is up and running at:"
 echo -e "🌐 https://${APP_DOMAIN}"
+echo -e "\n${BOLD}Total setup time: ${minutes}m ${seconds}s${NC}"
