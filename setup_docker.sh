@@ -33,7 +33,23 @@ read -p "Your email for Let's Encrypt: " EMAIL
 # Create required folders
 mkdir -p nginx/conf.d certbot/conf certbot/www
 
-# Write docker-compose.yml
+# Write temporary HTTP-only NGINX config
+cat > nginx/conf.d/default.conf <<EOF
+server {
+    listen 80;
+    server_name ${APP_DOMAIN} ${API_DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+EOF
+
+# Write docker-compose.yml with temporary setup
 cat > docker-compose.yml <<EOF
 version: '3'
 
@@ -117,34 +133,35 @@ services:
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    entrypoint: >
-      sh -c "sleep 10 &&
-      certbot certonly --webroot
-        --webroot-path=/var/www/certbot
-        --email ${EMAIL}
-        --agree-tos
-        --no-eff-email
-        -d ${APP_DOMAIN}
-        -d ${API_DOMAIN}"
+    command: certonly --webroot \
+      --webroot-path=/var/www/certbot \
+      --email ${EMAIL} \
+      --agree-tos \
+      --no-eff-email \
+      -d ${APP_DOMAIN} \
+      -d ${API_DOMAIN}
+
 volumes:
   mongodb_data:
   postgres_data:
 EOF
 
-# NGINX config for app and api
-cat > nginx/conf.d/default.conf <<EOF
-server {
-    listen 80;
-    server_name ${APP_DOMAIN} ${API_DOMAIN};
+# Start nginx to serve challenge
+echo -e "\n${BLUE}Starting NGINX in HTTP-only mode...${NC}"
+docker-compose up -d nginx
+sleep 5
 
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
+# Run certbot
+echo -e "\n${BLUE}Requesting SSL certs via Certbot...${NC}"
+docker-compose run --rm certbot
 
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
+if [ $? -ne 0 ]; then
+  echo -e "\n${RED}Certbot failed. Exiting script.${NC}"
+  exit 1
+fi
+
+# Append HTTPS config
+cat >> nginx/conf.d/default.conf <<EOF
 
 server {
     listen 443 ssl;
@@ -179,12 +196,6 @@ server {
 }
 EOF
 
-# Final instructions
-echo -e "\n${GREEN}✅ Docker Compose setup generated successfully!${NC}"
-echo -e "Steps to continue:"
-echo -e "1. Start NGINX temporarily to serve Certbot challenge:"
-echo -e "   ${BOLD}docker-compose up -d nginx${NC}"
-echo -e "2. Run Certbot to obtain certs:"
-echo -e "   ${BOLD}docker-compose run --rm certbot${NC}"
-echo -e "3. Restart all services with full HTTPS:"
-echo -e "   ${BOLD}docker-compose up -d${NC}"
+# Restart nginx with SSL
+echo -e "\n${GREEN}✅ Certificates obtained successfully! Restarting all services with HTTPS...${NC}"
+docker-compose up -d
