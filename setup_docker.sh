@@ -1,5 +1,8 @@
 #!/bin/bash
-
+if [ "$EUID" -ne 0 ]; then
+  echo "❌ Please run as root (e.g., sudo su first)"
+  exit 1
+fi
 # Record start time
 start_time=$(date +%s)
 
@@ -102,6 +105,10 @@ done
 
 # Create folder structure
 mkdir -p nginx/conf.d certbot/conf certbot/www
+
+# Extract subdomain parts for filenames
+APP_SUBDOMAIN=$(echo ${APP_DOMAIN} | cut -d '.' -f 1)
+API_SUBDOMAIN=$(echo ${API_DOMAIN} | cut -d '.' -f 1)
 
 # Step: Write HTTP NGINX config
 print_step "Writing temporary HTTP-only NGINX config..."
@@ -228,7 +235,7 @@ sleep 5
 
 # Step: Run Certbot
 print_step "Requesting SSL certificates..."
-docker-compose run --rm certbot &
+docker-compose run certbot &
 show_progress "Obtaining SSL certificates"
 if [ $? -ne 0 ]; then
   print_error "Certbot failed. Check domain DNS or ports 80/443."
@@ -238,8 +245,7 @@ print_success "Certificates obtained."
 
 # Step: Append HTTPS config
 print_step "Adding HTTPS config to NGINX..."
-cat >> nginx/conf.d/default.conf <<EOF
-
+cat >> nginx/conf.d/${APP_SUBDOMAIN}.conf <<EOF
 server {
     listen 443 ssl;
     server_name ${APP_DOMAIN};
@@ -255,7 +261,9 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 }
+EOF
 
+cat >> nginx/conf.d/${API_SUBDOMAIN}.conf <<EOF
 server {
     listen 443 ssl;
     server_name ${API_DOMAIN};
@@ -272,6 +280,8 @@ server {
     }
 }
 EOF
+
+mv nginx/conf.d/default.conf nginx/conf.d/default.conf.disabled
 
 # Step: Restart all services with HTTPS
 print_step "Restarting all services with HTTPS enabled..."
