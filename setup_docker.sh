@@ -159,18 +159,24 @@ print_step "Waiting for NGINX to start..."
 sleep 5
 
 # Step: Run Certbot
-print_step "Requesting SSL certificates..."
-docker-compose run --rm certbot &
-show_progress "Obtaining SSL certificates"
+docker-compose run certbot > certbot.log 2>&1
+CERTBOT_EXIT=$?
 
-# Verify certificates were actually created
-if [ ! -f "certbot/conf/live/${APP_DOMAIN}/fullchain.pem" ]; then
-  print_error "Certbot failed. Certificates were not issued."
-  print_error "Check the logs for errors:"
-  docker-compose logs certbot
-  exit 1
+echo -e "\n📄 Certbot log:"
+cat certbot.log
+
+if [ $CERTBOT_EXIT -ne 0 ]; then
+  echo -e "\n❌ Certbot failed. Check above logs or see certbot.log"
+else
+  echo -e "\n✅ Certbot succeeded."
 fi
-print_success "Certificates obtained successfully."
+
+# Clean up certbot container to avoid orphans
+CERTBOT_CONTAINER=$(docker ps -a --filter "name=_certbot_" --format "{{.ID}}" | head -n 1)
+if [ -n "$CERTBOT_CONTAINER" ]; then
+  docker rm "$CERTBOT_CONTAINER" > /dev/null
+  echo "🧹 Cleaned up certbot container: $CERTBOT_CONTAINER"
+fi
 
 # Step: Update configs with HTTPS
 print_step "Adding HTTPS config to NGINX..."
