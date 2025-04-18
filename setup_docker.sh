@@ -156,9 +156,10 @@ print_step "Starting temporary NGINX for HTTP..."
 docker-compose up -d nginx &
 show_progress "Starting NGINX"
 print_step "Waiting for NGINX to start..."
-sleep 5
+sleep 15
 
 # Step: Run Certbot
+print_step "Running Certbot to obtain SSL certificates..."
 docker-compose run certbot > certbot.log 2>&1
 CERTBOT_EXIT=$?
 
@@ -167,6 +168,7 @@ cat certbot.log
 
 if [ $CERTBOT_EXIT -ne 0 ]; then
   echo -e "\n❌ Certbot failed. Check above logs or see certbot.log"
+  exit 1
 else
   echo -e "\n✅ Certbot succeeded."
 fi
