@@ -261,9 +261,14 @@ volumes:
   postgres_data:
 EOF
 
+# Clean up any orphaned containers before starting
+print_step "Cleaning up any existing containers..."
+docker-compose down --remove-orphans &> /dev/null || true
+docker rm -f $(docker ps -a --filter "name=certbot-run" --format "{{.ID}}") &> /dev/null || true
+
 # Step: Start NGINX for HTTP
 print_step "Starting temporary NGINX for HTTP..."
-docker-compose up -d nginx &
+docker-compose up -d nginx --remove-orphans &
 show_progress "Starting NGINX"
 print_step "Waiting for NGINX to start..."
 sleep 20
@@ -374,9 +379,9 @@ EOF
 
 # Step: Restart all services with HTTPS
 print_step "Restarting all services with HTTPS enabled..."
-docker-compose down &
+docker-compose down --remove-orphans &
 show_progress "Stopping services"
-docker-compose up -d &
+docker-compose up -d --remove-orphans &
 show_progress "Starting all services with HTTPS"
 
 # Calculate total time
