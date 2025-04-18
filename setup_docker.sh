@@ -164,6 +164,103 @@ server {
 }
 EOF
 
+print_step "Generating docker-compose.yml..."
+cat > docker-compose.yml <<EOF
+
+services:
+  client:
+    image: aerlinn13/ifmethod-client:${TAG}
+    container_name: ifmethod-client
+    environment:
+      - APP_HOST=https://${APP_DOMAIN}
+      - API_HOST=https://${API_DOMAIN}
+      - IS_PROD=true
+      - DEMO_ENABLED=false
+    expose:
+      - "8080"
+
+  server:
+    image: aerlinn13/ifmethod-server:${TAG}
+    container_name: ifmethod-server
+    environment:
+      - APP_HOST=https://${APP_DOMAIN}
+      - API_HOST=https://${API_DOMAIN}
+      - MONGODB_URI=mongodb://admin:j6M7N3eo1Heu1BTx@mongodb:27017/swinlanes?authSource=admin
+      - PORT=5050
+    expose:
+      - "5050"
+    depends_on:
+      - mongodb
+      - supertokens
+
+  mongodb:
+    image: mongo:8.0.6
+    container_name: ifmethod-mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=j6M7N3eo1Heu1BTx
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+
+  postgres:
+    image: postgres:15
+    container_name: ifmethod-postgres
+    environment:
+      - POSTGRES_USER=supertokens
+      - POSTGRES_PASSWORD=supertokens
+      - POSTGRES_DB=supertokens
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  supertokens:
+    image: registry.supertokens.io/supertokens/supertokens-postgresql:10.1.0
+    container_name: ifmethod-supertokens
+    environment:
+      - API_KEYS=Hs7Kp9Lm2Qr5Vx8Zc3Jf
+      - POSTGRESQL_CONNECTION_URI=postgresql://supertokens:supertokens@postgres:5432/supertokens
+    ports:
+      - "3567:3567"
+    depends_on:
+      - postgres
+
+  nginx:
+    image: nginx:latest
+    container_name: ifmethod-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - client
+      - server
+
+  certbot:
+    image: certbot/certbot
+    container_name: ifmethod-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot \
+      --webroot-path=/var/www/certbot \
+      ${EMAIL:+--email $EMAIL} \
+      --agree-tos \
+      --no-eff-email \
+      -d ${APP_DOMAIN} \
+      -d ${API_DOMAIN}
+
+volumes:
+  mongodb_data:
+  postgres_data:
+EOF
+
 # Step: Start NGINX for HTTP
 print_step "Starting temporary NGINX for HTTP..."
 docker-compose up -d nginx &
@@ -261,102 +358,7 @@ server {
 EOF
 
 # Step: Generate Docker Compose
-print_step "Generating docker-compose.yml..."
-cat > docker-compose.yml <<EOF
 
-services:
-  client:
-    image: aerlinn13/ifmethod-client:${TAG}
-    container_name: ifmethod-client
-    environment:
-      - APP_HOST=https://${APP_DOMAIN}
-      - API_HOST=https://${API_DOMAIN}
-      - IS_PROD=true
-      - DEMO_ENABLED=false
-    expose:
-      - "8080"
-
-  server:
-    image: aerlinn13/ifmethod-server:${TAG}
-    container_name: ifmethod-server
-    environment:
-      - APP_HOST=https://${APP_DOMAIN}
-      - API_HOST=https://${API_DOMAIN}
-      - MONGODB_URI=mongodb://admin:j6M7N3eo1Heu1BTx@mongodb:27017/swinlanes?authSource=admin
-      - PORT=5050
-    expose:
-      - "5050"
-    depends_on:
-      - mongodb
-      - supertokens
-
-  mongodb:
-    image: mongo:8.0.6
-    container_name: ifmethod-mongo
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=j6M7N3eo1Heu1BTx
-    volumes:
-      - mongodb_data:/data/db
-    ports:
-      - "27017:27017"
-
-  postgres:
-    image: postgres:15
-    container_name: ifmethod-postgres
-    environment:
-      - POSTGRES_USER=supertokens
-      - POSTGRES_PASSWORD=supertokens
-      - POSTGRES_DB=supertokens
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-  supertokens:
-    image: registry.supertokens.io/supertokens/supertokens-postgresql:10.1.0
-    container_name: ifmethod-supertokens
-    environment:
-      - API_KEYS=Hs7Kp9Lm2Qr5Vx8Zc3Jf
-      - POSTGRESQL_CONNECTION_URI=postgresql://supertokens:supertokens@postgres:5432/supertokens
-    ports:
-      - "3567:3567"
-    depends_on:
-      - postgres
-
-  nginx:
-    image: nginx:latest
-    container_name: ifmethod-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    depends_on:
-      - client
-      - server
-
-  certbot:
-    image: certbot/certbot
-    container_name: ifmethod-certbot
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    command: certonly --webroot \
-      --webroot-path=/var/www/certbot \
-      ${EMAIL:+--email $EMAIL} \
-      --agree-tos \
-      --no-eff-email \
-      -d ${APP_DOMAIN} \
-      -d ${API_DOMAIN}
-
-volumes:
-  mongodb_data:
-  postgres_data:
-EOF
 
 # Step: Restart all services with HTTPS
 print_step "Restarting all services with HTTPS enabled..."
