@@ -156,7 +156,7 @@ print_step "Starting temporary NGINX for HTTP..."
 docker-compose up -d nginx &
 show_progress "Starting NGINX"
 print_step "Waiting for NGINX to start..."
-sleep 15
+sleep 20
 
 # Step: Run Certbot
 print_step "Running Certbot to obtain SSL certificates..."
