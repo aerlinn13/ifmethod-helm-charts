@@ -175,7 +175,7 @@ services:
       - APP_HOST=https://${APP_DOMAIN}
       - API_HOST=https://${API_DOMAIN}
       - IS_PROD=true
-      - DEMO_ENABLED=false
+      - DEMO_ENABLED=true
     expose:
       - "8080"
 
