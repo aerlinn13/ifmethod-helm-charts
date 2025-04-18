@@ -113,6 +113,19 @@ API_SUBDOMAIN=$(echo ${API_DOMAIN} | cut -d '.' -f 1)
 # Step: Write HTTP NGINX config for cert issuance
 print_step "Writing HTTP NGINX configs for certificate issuance..."
 
+cat > nginx/conf.d/default.conf <<EOF
+server {
+    listen 80;
+    server_name ${APP_DOMAIN} ${API_DOMAIN};
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        default_type text/plain;
+        try_files \$uri =404;
+    }
+}
+EOF
+
 # Create HTTP-only config for app domain
 cat > nginx/conf.d/${APP_SUBDOMAIN}.conf <<EOF
 server {
