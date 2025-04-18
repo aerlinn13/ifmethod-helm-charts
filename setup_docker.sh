@@ -270,11 +270,23 @@ sleep 20
 
 # Step: Run Certbot
 print_step "Running Certbot to obtain SSL certificates..."
-docker-compose run certbot > certbot.log 2>&1
-CERTBOT_EXIT=$?
 
-echo -e "\n📄 Certbot log:"
-cat certbot.log
+# Check if certificates already exist
+if [ -d "certbot/conf/live/${APP_DOMAIN}" ]; then
+  print_step "Existing certificates found. Running in interactive mode..."
+  # Run in foreground for interactive prompt
+  docker-compose run --rm certbot
+  CERTBOT_EXIT=$?
+else
+  # First-time issuance, can run in background
+  docker-compose run --rm certbot > certbot.log 2>&1 &
+  show_progress "Obtaining SSL certificates"
+  wait $!
+  CERTBOT_EXIT=$?
+  
+  echo -e "\n📄 Certbot log:"
+  cat certbot.log
+fi
 
 if [ $CERTBOT_EXIT -ne 0 ]; then
   echo -e "\n❌ Certbot failed. Check above logs or see certbot.log"
@@ -286,7 +298,7 @@ fi
 # Clean up certbot container to avoid orphans
 CERTBOT_CONTAINER=$(docker ps -a --filter "name=_certbot_" --format "{{.ID}}" | head -n 1)
 if [ -n "$CERTBOT_CONTAINER" ]; then
-  docker rm "$CERTBOT_CONTAINER" > /dev/null
+  docker rm "$CERTBOT_CONTAINER" > /dev/null 2>&1
   echo "🧹 Cleaned up certbot container: $CERTBOT_CONTAINER"
 fi
 
