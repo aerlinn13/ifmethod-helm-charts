@@ -268,7 +268,7 @@ docker rm -f $(docker ps -a --filter "name=certbot-run" --format "{{.ID}}") &> /
 
 # Step: Start NGINX for HTTP
 print_step "Starting temporary NGINX for HTTP..."
-docker-compose up -d nginx --remove-orphans &
+docker-compose up -d nginx &
 show_progress "Starting NGINX"
 print_step "Waiting for NGINX to start..."
 sleep 20
@@ -425,10 +425,13 @@ fi
 
 # Test the renewal setup
 print_step "Testing SSL renewal process..."
-docker-compose run --rm certbot renew --dry-run &
-show_progress "Testing renewal"
+if ! timeout 90s docker-compose run --rm certbot renew --dry-run &> renewal-test.log; then
+  print_error "SSL renewal test failed! Check renewal-test.log for details."
+  echo "You may need to fix renewal issues before certificates expire."
+  exit 1
+fi
 
-print_success "SSL auto-renewal is set up and tested."
+print_success "SSL auto-renewal is set up and tested successfully."
 
 print_success "IFMethod is up and running at:"
 echo -e "🌐 https://${APP_DOMAIN}"
