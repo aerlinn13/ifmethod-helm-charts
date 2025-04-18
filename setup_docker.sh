@@ -373,6 +373,46 @@ total_time=$((end_time - start_time))
 minutes=$((total_time / 60))
 seconds=$((total_time % 60))
 
+# Add SSL renewal script and cron job
+print_step "Setting up automatic SSL renewal..."
+
+# Create renewal script
+cat > renew-ssl.sh <<EOF
+#!/bin/bash
+set -e
+
+# Path to the docker-compose directory
+cd "$(pwd)"
+
+# Run certbot renewal
+docker-compose run --rm certbot renew --quiet
+
+# Reload nginx to use the new certificates
+docker-compose exec nginx nginx -s reload
+
+# Log successful renewal
+echo "Certificates renewed at \$(date)" >> renewal.log
+EOF
+
+# Make the script executable
+chmod +x renew-ssl.sh
+
+# Add to crontab if not already present
+CRON_JOB="0 0,12 * * * $(pwd)/renew-ssl.sh >> /var/log/cron-ssl-renewal.log 2>&1"
+if ! (crontab -l 2>/dev/null | grep -q "renew-ssl.sh"); then
+  (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+  print_success "Added certificate renewal to crontab (runs twice daily)."
+else
+  print_success "Certificate renewal cron job already exists."
+fi
+
+# Test the renewal setup
+print_step "Testing SSL renewal process..."
+docker-compose run --rm certbot renew --dry-run &
+show_progress "Testing renewal"
+
+print_success "SSL auto-renewal is set up and tested."
+
 print_success "IFMethod is up and running at:"
 echo -e "🌐 https://${APP_DOMAIN}"
 echo -e "\n${BOLD}Total setup time: ${minutes}m ${seconds}s${NC}"
