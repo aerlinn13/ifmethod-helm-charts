@@ -50,6 +50,31 @@ function print_error() {
   echo -e "${RED}❌ $1${NC}"
 }
 
+# Function to load saved config
+function load_config() {
+  if [ -f "config.json" ]; then
+    APP_DOMAIN=$(jq -r '.app_domain // empty' config.json)
+    API_DOMAIN=$(jq -r '.api_domain // empty' config.json)
+    TAG=$(jq -r '.tag // empty' config.json)
+    EMAIL=$(jq -r '.email // empty' config.json)
+  fi
+}
+
+# Function to save config
+function save_config() {
+  jq -n \
+    --arg app_domain "$APP_DOMAIN" \
+    --arg api_domain "$API_DOMAIN" \
+    --arg tag "$TAG" \
+    --arg email "$EMAIL" \
+    '{
+      app_domain: $app_domain,
+      api_domain: $api_domain,
+      tag: $tag,
+      email: $email
+    }' > config.json
+}
+
 echo -e "${BOLD}IFMethod Full Setup Script${NC}"
 echo -e "Provision Docker, generate configs, get SSL certs, launch services.\n"
 
@@ -81,27 +106,48 @@ else
   print_success "Docker Compose is installed."
 fi
 
-# Input prompts
+# Check for required tools
+print_step "Checking for required tools..."
+if ! command -v jq &> /dev/null; then
+  print_step "Installing jq..."
+  apt-get update && apt-get install -y jq
+  if [ $? -ne 0 ]; then
+    print_error "Failed to install jq"; exit 1;
+  fi
+  print_success "jq installed."
+fi
+
+# Load existing config if available
+load_config
+
+# Input prompts with defaults
 print_step "Domain Setup"
 while true; do
-  read -p "App domain (e.g., app.ifmethod.ru): " APP_DOMAIN
+  read -p "App domain (e.g., app.ifmethod.ru)${APP_DOMAIN:+ [${APP_DOMAIN}]}: " input
+  APP_DOMAIN=${input:-$APP_DOMAIN}
   [ -n "$APP_DOMAIN" ] && break || print_error "Required."
 done
 
 while true; do
-  read -p "API domain (e.g., api.ifmethod.ru): " API_DOMAIN
+  read -p "API domain (e.g., api.ifmethod.ru)${API_DOMAIN:+ [${API_DOMAIN}]}: " input
+  API_DOMAIN=${input:-$API_DOMAIN}
   [ -n "$API_DOMAIN" ] && break || print_error "Required."
 done
 
 while true; do
-  read -p "Image tag (e.g., 4.25.1): " TAG
+  read -p "Image tag (e.g., 4.25.3)${TAG:+ [${TAG}]}: " input
+  TAG=${input:-$TAG}
   [ -n "$TAG" ] && break || print_error "Required."
 done
 
 while true; do
-read -p "Your email for Let's Encrypt (required): " EMAIL
-[ -n "$EMAIL" ] && break || print_error "Required."
+  read -p "Your email for Let's Encrypt (required)${EMAIL:+ [${EMAIL}]}: " input
+  EMAIL=${input:-$EMAIL}
+  [ -n "$EMAIL" ] && break || print_error "Required."
 done
+
+# Save the new config
+save_config
 
 # Create folder structure
 mkdir -p nginx/conf.d certbot/conf certbot/www
@@ -178,6 +224,8 @@ services:
       - DEMO_ENABLED=true
     expose:
       - "8080"
+    networks:
+      - internal-network
 
   server:
     image: aerlinn13/ifmethod-server:${TAG}
@@ -192,6 +240,8 @@ services:
     depends_on:
       - mongodb
       - supertokens
+    networks:
+      - internal-network
 
   mongodb:
     image: mongo:8.0.6
@@ -201,8 +251,9 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=j6M7N3eo1Heu1BTx
     volumes:
       - mongodb_data:/data/db
-    ports:
-      - "27017:27017"
+    command: mongod --bind_ip 0.0.0.0 --port 27017
+    networks:
+      - internal-network
 
   postgres:
     image: postgres:15
@@ -213,8 +264,9 @@ services:
       - POSTGRES_DB=supertokens
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    command: postgres -c listen_addresses=0.0.0.0
+    networks:
+      - internal-network
 
   supertokens:
     image: registry.supertokens.io/supertokens/supertokens-postgresql:10.1.0
@@ -222,10 +274,12 @@ services:
     environment:
       - API_KEYS=Hs7Kp9Lm2Qr5Vx8Zc3Jf
       - POSTGRESQL_CONNECTION_URI=postgresql://supertokens:supertokens@postgres:5432/supertokens
-    ports:
-      - "3567:3567"
+    expose:
+      - "3567"
     depends_on:
       - postgres
+    networks:
+      - internal-network
 
   nginx:
     image: nginx:latest
@@ -241,6 +295,8 @@ services:
     depends_on:
       - client
       - server
+    networks:
+      - internal-network
 
   certbot:
     image: certbot/certbot
@@ -255,6 +311,13 @@ services:
       --no-eff-email \
       -d ${APP_DOMAIN} \
       -d ${API_DOMAIN}
+    networks:
+      - internal-network
+
+networks:
+  internal-network:
+    driver: bridge
+    internal: true
 
 volumes:
   mongodb_data:
