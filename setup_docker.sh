@@ -224,6 +224,8 @@ services:
       - DEMO_ENABLED=true
     expose:
       - "8080"
+    ports:
+      - "8080:8080" 
     networks:
       - internal-network
 
@@ -237,6 +239,8 @@ services:
       - PORT=5050
     expose:
       - "5050"
+    ports:
+      - "5050:5050" 
     depends_on:
       - mongodb
       - supertokens
