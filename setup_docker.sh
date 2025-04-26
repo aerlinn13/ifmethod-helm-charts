@@ -321,7 +321,6 @@ services:
 networks:
   internal-network:
     driver: bridge
-    internal: true
 
 volumes:
   mongodb_data:
