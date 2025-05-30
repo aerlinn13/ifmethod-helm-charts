@@ -135,7 +135,7 @@ while true; do
 done
 
 while true; do
-  read -p "Image tag (e.g., 4.25.4)${TAG:+ [${TAG}]}: " input
+  read -p "Image tag (e.g., 5.25.1)${TAG:+ [${TAG}]}: " input
   TAG=${input:-$TAG}
   [ -n "$TAG" ] && break || print_error "Required."
 done
