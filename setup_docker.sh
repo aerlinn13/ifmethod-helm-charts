@@ -123,13 +123,13 @@ load_config
 # Input prompts with defaults
 print_step "Domain Setup"
 while true; do
-  read -p "App domain (e.g., app.ifmethod.ru)${APP_DOMAIN:+ [${APP_DOMAIN}]}: " input
+  read -p "App domain (e.g., app.ifmethod.com)${APP_DOMAIN:+ [${APP_DOMAIN}]}: " input
   APP_DOMAIN=${input:-$APP_DOMAIN}
   [ -n "$APP_DOMAIN" ] && break || print_error "Required."
 done
 
 while true; do
-  read -p "API domain (e.g., api.ifmethod.ru)${API_DOMAIN:+ [${API_DOMAIN}]}: " input
+  read -p "API domain (e.g., api.ifmethod.com)${API_DOMAIN:+ [${API_DOMAIN}]}: " input
   API_DOMAIN=${input:-$API_DOMAIN}
   [ -n "$API_DOMAIN" ] && break || print_error "Required."
 done
